@@ -2,6 +2,7 @@ use std::io::{stdout, Stdout, Write};
 use std::time::Duration;
 
 use crossterm::style::Color;
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor::MoveTo,
     event::{self, poll, read, Event, KeyCode},
@@ -82,11 +83,14 @@ fn main() -> std::io::Result<()> {
     };
 
     let mut stop: bool = false;
+    execute!(sc, Clear(ClearType::All))?;
+
     while !stop {
         let _ = mechanics(&mut sc, &mut world, height, width, &mut stop);
         draw(&sc, &world)?;
     }
     // Disable raw mode and show the cursor before exiting
+    execute!(sc, Clear(ClearType::All))?;
     terminal::disable_raw_mode()?;
     execute!(sc, crossterm::cursor::Show)?;
     Ok(())
