@@ -13,17 +13,15 @@ use crossterm::{
     QueueableCommand,
 };
 
-// struct World {
-//     player_c: u16,
-//     player_l: u16,
-// }
+struct World {
+    map: Vec<(u16, u16)>,
+}
 
 // Boat struct to hold boat state
 struct Boat {
     position_x: u16,
     position_y: u16,
 }
-
 
 trait BoatMechanics {
     /// Creates a new [`Boat`].
@@ -74,7 +72,8 @@ impl BoatMechanics for Boat {
     }
 }
 
-fn draw(mut sc: &Stdout, boat: &Boat) -> std::io::Result<()> {
+fn draw(mut sc: &Stdout, mut world: &World, boat: &Boat) -> std::io::Result<()> {
+
     queue!(
         sc,
         MoveTo(boat.position_x, boat.position_y - 1),
@@ -139,14 +138,17 @@ fn main() -> std::io::Result<()> {
     let (width, height) = size()?;
 
     let mut sc = stdout();
-    let mut boat = Boat::new(width/2, height - 1);
+    let mut world: World = World {
+        map: vec![((width / 2) - 5, (width / 2) + 5); height as usize],
+    };
+    let mut boat = Boat::new(width / 2, height - 1);
 
     let mut stop: bool = false;
     execute!(sc, Clear(ClearType::All))?;
 
     while !stop {
         stop = mechanics(&mut boat, height, width)?;
-        draw(&sc, &boat).expect("Failed in draw function");
+        draw(&sc, &world, &boat).expect("Failed in draw function");
     }
     // Disable raw mode and show the cursor before exiting
     execute!(sc, Clear(ClearType::All))?;
