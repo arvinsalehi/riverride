@@ -1,7 +1,14 @@
 use std::io::{stdout, Stdout, Write};
+use std::time::Duration;
 
+use crossterm::style::Color;
 use crossterm::{
-    cursor::MoveTo, event::{self, read}, execute, style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor}, terminal::{self, size}, ExecutableCommand, QueueableCommand
+    cursor::MoveTo,
+    event::{self, poll, read, Event, KeyCode},
+    execute,
+    style::{Print, SetForegroundColor},
+    terminal::{self, size},
+    ExecutableCommand, QueueableCommand,
 };
 
 struct World {
@@ -9,42 +16,63 @@ struct World {
     player_l: u16,
 }
 
-fn draw(mut sc: &Stdout, world: &World) {
-    let _ = sc.queue(MoveTo(world.player_c, world.player_l));
-    let _ = sc.queue(Print('P'));
-    let _ = sc.flush();
+fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
+    sc.queue(MoveTo(world.player_c, world.player_l))?;
+    sc.queue(SetForegroundColor(Color::Yellow))?;
+    sc.queue(Print('P'))?;
+    sc.queue(SetForegroundColor(Color::Reset))?;
+    sc.flush();
+    Ok(())
 }
 
 fn main() -> std::io::Result<()> {
     // Initialize the terminal.
-    terminal::enable_raw_mode().expect("Failed to enable raw mode");
+    terminal::enable_raw_mode()?;
     // Get the size of the terminal.
-    let (width, height) = size().expect("Failed to get terminal size");
+    let (width, height) = size()?;
 
-    let sc: Stdout = stdout();
+    let mut sc = stdout();
     let mut world = World {
-        player_c: width/ 2,
+        player_c: width / 2,
         player_l: height - 1,
     };
 
     loop {
-
-        // `poll()` waits for an `Event` for a given time period
         if poll(Duration::from_millis(10))? {
-            // It's guaranteed that the `read()` won't block when the `poll()`
-            // function returns `true`
-            let key = read().expect("Failed to read event");
-            match key? {
-                Event::FocusGained => println!("FocusGained"),
-                Event::FocusLost => println!("FocusLost"),
-                Event::Key(event) => println!("{:?}", event),
-                Event::Mouse(event) => println!("{:?}", event),
-                #[cfg(feature = "bracketed-paste")]
-                Event::Paste(data) => println!("Pasted {:?}", data),
-                Event::Resize(width, height) => println!("New size {}x{}", width, height),
+            let key = read()?;
+            match key {
+                Event::Key(event) => match event.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Up => {
+                        world.player_l -= 1;
+                        if world.player_l == 0 {
+                            world.player_l = height - 1;
+                        }
+                    }
+                    KeyCode::Down => {
+                        world.player_l += 1;
+                        if world.player_l == height {
+                            world.player_l = 1;
+                        }
+                    }
+                    KeyCode::Left => {
+                        world.player_c -= 1;
+                        if world.player_c == 0 {
+                            world.player_c = width - 1;
+                        }
+                    }
+                    KeyCode::Right => {
+                        world.player_c += 1;
+                        if world.player_c == width {
+                            world.player_c = 1;
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
             }
-
-        draw(&sc, &world);
+        }
+        draw(&sc, &world)?;
     }
     Ok(())
 }
