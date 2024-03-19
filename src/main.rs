@@ -20,11 +20,19 @@ struct World {
 
 
 fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
-    queue!(sc, MoveTo(world.player_c , world.player_l - 1), Clear(ClearType::CurrentLine))?;
-    queue!(sc, MoveTo(world.player_c , world.player_l + 1), Clear(ClearType::CurrentLine))?;
+    queue!(sc,
+        MoveTo(world.player_c , world.player_l - 1),
+        Clear(ClearType::CurrentLine),
+        MoveTo(world.player_c , world.player_l + 1),
+        Clear(ClearType::CurrentLine),
+        MoveTo(world.player_c - 1 , world.player_l),
+        Clear(ClearType::CurrentLine),
+        MoveTo(world.player_c + 1 , world.player_l),
+        Clear(ClearType::CurrentLine),
+    )?;
     sc.queue(MoveTo(world.player_c, world.player_l))?;
     sc.queue(SetForegroundColor(Color::Yellow))?;
-    sc.queue(Print('P'))?;
+    sc.queue(Print('d'))?;
     sc.queue(SetForegroundColor(Color::Reset))?;
     let _ = sc.flush();
     Ok(())
@@ -34,13 +42,12 @@ fn mechanics(
     world: &mut World,
     height: u16,
     width: u16,
-    stop: &mut bool,
-) -> std::io::Result<()> {
+) -> std::io::Result<(bool)> {
     if poll(Duration::from_millis(10))? {
         let key = read()?;
         match key {
             Event::Key(event) => match event.code {
-                KeyCode::Char('q') => *stop = !*stop,
+                KeyCode::Char('q') => return Ok(true),
                 KeyCode::Up => {
                     world.player_l -= 1;
                     if world.player_l == 0 {
@@ -70,7 +77,7 @@ fn mechanics(
             _ => {}
         }
     }
-    Ok(())
+    Ok(false)
 }
 
 fn main() -> std::io::Result<()> {
@@ -89,7 +96,7 @@ fn main() -> std::io::Result<()> {
     execute!(sc, Clear(ClearType::All))?;
 
     while !stop {
-        let _ = mechanics(&mut world, height, width, &mut stop);
+        stop = mechanics(&mut world, height, width)?;
         draw(&sc, &world)?;
     }
     // Disable raw mode and show the cursor before exiting
