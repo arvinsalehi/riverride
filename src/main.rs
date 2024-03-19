@@ -25,6 +25,50 @@ fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
     Ok(())
 }
 
+fn mechanics(
+    sc: &mut Stdout,
+    world: &mut World,
+    height: u16,
+    width: u16,
+    stop: &mut bool,
+) -> std::io::Result<()> {
+    if poll(Duration::from_millis(10))? {
+        let key = read()?;
+        match key {
+            Event::Key(event) => match event.code {
+                KeyCode::Char('q') => *stop = !*stop,
+                KeyCode::Up => {
+                    world.player_l -= 1;
+                    if world.player_l == 0 {
+                        world.player_l = height - 1;
+                    }
+                }
+                KeyCode::Down => {
+                    world.player_l += 1;
+                    if world.player_l == height {
+                        world.player_l = 1;
+                    }
+                }
+                KeyCode::Left => {
+                    world.player_c -= 1;
+                    if world.player_c == 0 {
+                        world.player_c = width - 1;
+                    }
+                }
+                KeyCode::Right => {
+                    world.player_c += 1;
+                    if world.player_c == width {
+                        world.player_c = 1;
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 fn main() -> std::io::Result<()> {
     // Initialize the terminal.
     terminal::enable_raw_mode()?;
@@ -37,42 +81,13 @@ fn main() -> std::io::Result<()> {
         player_l: height - 1,
     };
 
-    loop {
-        if poll(Duration::from_millis(10))? {
-            let key = read()?;
-            match key {
-                Event::Key(event) => match event.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Up => {
-                        world.player_l -= 1;
-                        if world.player_l == 0 {
-                            world.player_l = height - 1;
-                        }
-                    }
-                    KeyCode::Down => {
-                        world.player_l += 1;
-                        if world.player_l == height {
-                            world.player_l = 1;
-                        }
-                    }
-                    KeyCode::Left => {
-                        world.player_c -= 1;
-                        if world.player_c == 0 {
-                            world.player_c = width - 1;
-                        }
-                    }
-                    KeyCode::Right => {
-                        world.player_c += 1;
-                        if world.player_c == width {
-                            world.player_c = 1;
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
+    let mut stop: bool = false;
+    while !stop {
+        let _ = mechanics(&mut sc, &mut world, height, width, &mut stop);
         draw(&sc, &world)?;
     }
+    // Disable raw mode and show the cursor before exiting
+    terminal::disable_raw_mode()?;
+    execute!(sc, crossterm::cursor::Show)?;
     Ok(())
 }
