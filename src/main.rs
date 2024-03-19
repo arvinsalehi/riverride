@@ -6,31 +6,87 @@ use crossterm::style::Color;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
     cursor::MoveTo,
-    event::{self, poll, read, Event, KeyCode},
+    event::{poll, read, Event, KeyCode},
     execute,
     style::{Print, SetForegroundColor},
     terminal::{self, size},
-    ExecutableCommand, QueueableCommand,
+    QueueableCommand,
 };
 
-struct World {
-    player_c: u16,
-    player_l: u16,
+// struct World {
+//     player_c: u16,
+//     player_l: u16,
+// }
+
+// Boat struct to hold boat state
+struct Boat {
+    position_x: u16,
+    position_y: u16,
 }
 
 
-fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
-    queue!(sc,
-        MoveTo(world.player_c , world.player_l - 1),
+trait BoatMechanics {
+    /// Creates a new [`Boat`].
+    fn new(x: u16, y: u16) -> Boat;
+
+    fn move_up(&mut self);
+
+    fn move_down(&mut self);
+
+    fn move_left(&mut self);
+
+    fn move_right(&mut self);
+
+    fn display(&self);
+}
+
+impl BoatMechanics for Boat {
+    /// Creates a new [`Boat`].
+    fn new(x: u16, y: u16) -> Boat {
+        Boat {
+            position_x: x,
+            position_y: y,
+        }
+    }
+
+    fn move_up(&mut self) {
+        self.position_y -= 1;
+    }
+
+    fn move_down(&mut self) {
+        self.position_y += 1;
+    }
+
+    fn move_left(&mut self) {
+        self.position_x -= 1;
+    }
+
+    fn move_right(&mut self) {
+        self.position_x += 1;
+    }
+
+    fn display(&self) {
+        print!("\x1B[2J\x1B[1;1H"); // Clear the terminal
+        println!(
+            "Current Boat Position: ({}, {})",
+            self.position_x, self.position_y
+        );
+    }
+}
+
+fn draw(mut sc: &Stdout, boat: &Boat) -> std::io::Result<()> {
+    queue!(
+        sc,
+        MoveTo(boat.position_x, boat.position_y - 1),
         Clear(ClearType::CurrentLine),
-        MoveTo(world.player_c , world.player_l + 1),
+        MoveTo(boat.position_x, boat.position_y + 1),
         Clear(ClearType::CurrentLine),
-        MoveTo(world.player_c - 1 , world.player_l),
+        MoveTo(boat.position_x - 1, boat.position_y),
         Clear(ClearType::CurrentLine),
-        MoveTo(world.player_c + 1 , world.player_l),
-        Clear(ClearType::CurrentLine),
+        MoveTo(boat.position_x + 1, boat.position_y),
+        Clear(ClearType::CurrentLine)
     )?;
-    sc.queue(MoveTo(world.player_c, world.player_l))?;
+    sc.queue(MoveTo(boat.position_x, boat.position_y))?;
     sc.queue(SetForegroundColor(Color::Yellow))?;
     sc.queue(Print('d'))?;
     sc.queue(SetForegroundColor(Color::Reset))?;
@@ -38,38 +94,34 @@ fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
     Ok(())
 }
 
-fn mechanics(
-    world: &mut World,
-    height: u16,
-    width: u16,
-) -> std::io::Result<(bool)> {
+fn mechanics(boat: &mut Boat, height: u16, width: u16) -> std::io::Result<bool> {
     if poll(Duration::from_millis(10))? {
         let key = read()?;
         match key {
             Event::Key(event) => match event.code {
                 KeyCode::Char('q') => return Ok(true),
                 KeyCode::Up => {
-                    world.player_l -= 1;
-                    if world.player_l == 0 {
-                        world.player_l = height - 1;
+                    boat.position_y -= 1;
+                    if boat.position_y == 0 {
+                        boat.position_y = height - 1;
                     }
                 }
                 KeyCode::Down => {
-                    world.player_l += 1;
-                    if world.player_l == height {
-                        world.player_l = 1;
+                    boat.position_y += 1;
+                    if boat.position_y == height {
+                        boat.position_y = 1;
                     }
                 }
                 KeyCode::Left => {
-                    world.player_c -= 1;
-                    if world.player_c == 0 {
-                        world.player_c = width - 1;
+                    boat.position_x -= 1;
+                    if boat.position_x == 0 {
+                        boat.position_x = width - 1;
                     }
                 }
                 KeyCode::Right => {
-                    world.player_c += 1;
-                    if world.player_c == width {
-                        world.player_c = 1;
+                    boat.position_x += 1;
+                    if boat.position_x == width {
+                        boat.position_x = 1;
                     }
                 }
                 _ => {}
@@ -87,17 +139,14 @@ fn main() -> std::io::Result<()> {
     let (width, height) = size()?;
 
     let mut sc = stdout();
-    let mut world = World {
-        player_c: width / 2,
-        player_l: height - 1,
-    };
+    let mut boat = Boat::new(width/2, height - 1);
 
     let mut stop: bool = false;
     execute!(sc, Clear(ClearType::All))?;
 
     while !stop {
-        stop = mechanics(&mut world, height, width)?;
-        draw(&sc, &world)?;
+        stop = mechanics(&mut boat, height, width)?;
+        draw(&sc, &boat).expect("Failed in draw function");
     }
     // Disable raw mode and show the cursor before exiting
     execute!(sc, Clear(ClearType::All))?;
