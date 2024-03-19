@@ -1,6 +1,7 @@
 use std::io::{stdout, Stdout, Write};
 use std::time::Duration;
 
+use crossterm::queue;
 use crossterm::style::Color;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{
@@ -17,17 +18,19 @@ struct World {
     player_l: u16,
 }
 
+
 fn draw(mut sc: &Stdout, world: &World) -> std::io::Result<()> {
+    queue!(sc, MoveTo(world.player_c , world.player_l - 1), Clear(ClearType::CurrentLine))?;
+    queue!(sc, MoveTo(world.player_c , world.player_l + 1), Clear(ClearType::CurrentLine))?;
     sc.queue(MoveTo(world.player_c, world.player_l))?;
     sc.queue(SetForegroundColor(Color::Yellow))?;
     sc.queue(Print('P'))?;
     sc.queue(SetForegroundColor(Color::Reset))?;
-    sc.flush();
+    let _ = sc.flush();
     Ok(())
 }
 
 fn mechanics(
-    sc: &mut Stdout,
     world: &mut World,
     height: u16,
     width: u16,
@@ -86,7 +89,7 @@ fn main() -> std::io::Result<()> {
     execute!(sc, Clear(ClearType::All))?;
 
     while !stop {
-        let _ = mechanics(&mut sc, &mut world, height, width, &mut stop);
+        let _ = mechanics(&mut world, height, width, &mut stop);
         draw(&sc, &world)?;
     }
     // Disable raw mode and show the cursor before exiting
