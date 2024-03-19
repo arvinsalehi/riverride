@@ -14,6 +14,8 @@ use crossterm::{
 };
 
 struct World {
+    width: u16,
+    height: u16,
     map: Vec<(u16, u16)>,
 }
 
@@ -72,19 +74,14 @@ impl BoatMechanics for Boat {
     }
 }
 
-fn draw(mut sc: &Stdout, mut world: &World, boat: &Boat) -> std::io::Result<()> {
-
-    queue!(
-        sc,
-        MoveTo(boat.position_x, boat.position_y - 1),
-        Clear(ClearType::CurrentLine),
-        MoveTo(boat.position_x, boat.position_y + 1),
-        Clear(ClearType::CurrentLine),
-        MoveTo(boat.position_x - 1, boat.position_y),
-        Clear(ClearType::CurrentLine),
-        MoveTo(boat.position_x + 1, boat.position_y),
-        Clear(ClearType::CurrentLine)
-    )?;
+fn draw(mut sc: &Stdout, world: &World, boat: &Boat) -> std::io::Result<()> {
+    queue!(sc, Clear(ClearType::All))?;
+    for l in 0..world.map.len() {
+        sc.queue(MoveTo(0, l as u16))?;
+        sc.queue(Print("+".repeat(world.map[l].0 as usize)))?;
+        sc.queue(MoveTo(world.map[l].1, l as u16))?;
+        sc.queue(Print("+".repeat(world.map[l].0 as usize)))?;
+    }
     sc.queue(MoveTo(boat.position_x, boat.position_y))?;
     sc.queue(SetForegroundColor(Color::Yellow))?;
     sc.queue(Print('d'))?;
@@ -139,6 +136,8 @@ fn main() -> std::io::Result<()> {
 
     let mut sc = stdout();
     let mut world: World = World {
+        width: width,
+        height: height,
         map: vec![((width / 2) - 5, (width / 2) + 5); height as usize],
     };
     let mut boat = Boat::new(width / 2, height - 1);
