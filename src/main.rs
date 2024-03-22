@@ -26,9 +26,6 @@ struct Boat {
 }
 
 trait BoatMechanics {
-    /// Creates a new [`Boat`].
-    fn new(x: u16, y: u16) -> Boat;
-
     fn move_up(&mut self);
 
     fn move_down(&mut self);
@@ -36,11 +33,9 @@ trait BoatMechanics {
     fn move_left(&mut self);
 
     fn move_right(&mut self);
-
-    fn display(&self);
 }
 
-impl BoatMechanics for Boat {
+impl Boat {
     /// Creates a new [`Boat`].
     fn new(x: u16, y: u16) -> Boat {
         Boat {
@@ -49,6 +44,16 @@ impl BoatMechanics for Boat {
         }
     }
 
+    fn display(&self) {
+        print!("\x1B[2J\x1B[1;1H"); // Clear the terminal
+        println!(
+            "Current Boat Position: ({}, {})",
+            self.position_x, self.position_y
+        );
+    }
+}
+
+impl BoatMechanics for Boat {
     fn move_up(&mut self) {
         self.position_y -= 1;
     }
@@ -63,14 +68,6 @@ impl BoatMechanics for Boat {
 
     fn move_right(&mut self) {
         self.position_x += 1;
-    }
-
-    fn display(&self) {
-        print!("\x1B[2J\x1B[1;1H"); // Clear the terminal
-        println!(
-            "Current Boat Position: ({}, {})",
-            self.position_x, self.position_y
-        );
     }
 }
 
